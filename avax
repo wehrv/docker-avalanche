@@ -1,0 +1,130 @@
+#!/bin/bash
+if test "$1" == "" ; then
+echo "info: get node health"
+echo "logs: watch node logs"
+echo "node: get node id"
+echo "sync: get status of chain synchronization"
+echo "stop: stop node"
+echo "drop: remove node"
+echo "pots: restart stopped node"
+echo "roll: stop, remove, and start new node"
+echo "peer: peers"
+echo "vals: list validators"
+exit
+fi
+
+ADDR="127.0.0.1"
+DATA=''
+ENDP=''
+PORT="9650"
+
+case "$1" in
+logs)
+docker logs -f avalanche
+;;
+
+peer)
+DATA='{
+  "jsonrpc": "2.0",
+  "method": "info.peers",
+  "id": 1
+}'
+ENDP='/ext/info'
+;;
+
+vals)
+DATA='{
+  "jsonrpc": "2.0",
+  "method": "platform.getCurrentValidators",
+  "id": 1
+}'
+ENDP='/ext/P'
+;;
+
+info)
+DATA='{
+  "jsonrpc": "2.0",
+  "id"     : 1,
+  "method" : "health.getLiveness"
+}'
+ENDP='/ext/health'
+;;
+
+node)
+DATA='{
+  "jsonrpc": "2.0",
+  "id"     : 1,
+  "method" : "info.getNodeID"
+}'
+ENDP='/ext/info'
+;;
+
+c)
+echo -n "C: "
+DATA='{
+  "jsonrpc": "2.0",
+  "id"     : 1,
+  "method" : "info.isBootstrapped",
+  "params" : {
+    "chain" : "C"
+  }
+}'
+ENDP='/ext/info'
+;;
+
+p)
+echo -n "P: "
+DATA='{
+  "jsonrpc": "2.0",
+  "id"     : 1,
+  "method" : "info.isBootstrapped",
+  "params" : {
+    "chain" : "P"
+  }
+}'
+ENDP='/ext/info'
+;;
+
+x)
+echo -n "X: "
+DATA='{
+  "jsonrpc": "2.0",
+  "id"     : 1,
+  "method" : "info.isBootstrapped",
+  "params" : {
+    "chain" : "X"
+  }
+}'
+ENDP='/ext/info'
+;;
+
+sync)
+$0 c
+$0 p
+$0 x
+;;
+
+stop)
+docker stop avalanche
+;;
+
+pots)
+docker start avalanche
+;;
+
+drop)
+docker rm avalanche
+;;
+
+roll)
+$0 stop
+$0 drop
+docker run -d --restart unless-stopped --name avalanche -p 9650:9650 -p 9651:9651 -v avalanche:/root/.avalanchego avax0:avalanche
+;;
+
+*)
+$0
+;;
+esac
+
+if test "$DATA" != "" ; then curl -s -X POST --data "$DATA" -H 'content-type:application/json;' $ADDR:$PORT$ENDP | jq ; fi
